@@ -218,7 +218,7 @@ const fs = require('fs');
 const path = require('path');
 
 // Run every day at 12:30 PM
-cron.schedule('30 12 * * *', async () => {
+cron.schedule("* * * * *", async () => {
   console.log("🕒 Running EOD task report job...");
 
   try {
