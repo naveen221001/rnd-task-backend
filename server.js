@@ -271,16 +271,19 @@ cron.schedule("* * * * *", async () => {
     writeStream.on('finish', async () => {
       // ✅ Send Email
       const transporter = nodemailer.createTransport({
-        service: 'gmail',
+        host: "smtp.office365.com",
+        port: 587,
+        secure: false,
         auth: {
-          user: process.env.EMAIL_USER, // ✅ Replace with actual sender
-          pass: process.env.EMAIL_PASS           // ✅ Use app password
-        }
+          user: process.env.EMAIL_USER, // e.g. naveen.chamaria@yourcompany.com
+          pass: process.env.EMAIL_PASS, // your normal Outlook password
+        },
       });
+      
 
       await transporter.sendMail({
-        from: '"R&D Portal" <yourcompany.email@gmail.com>',
-        to: 'naveenchamaria2001@gmail.com',
+        from: `"R&D Portal" <${process.env.EMAIL_USER}>`, // ✅ your actual sender
+        to: "naveenchamaria2001@gmail.com",               // ✅ or planthead email
         subject: `EOD Task Report - ${formattedDate}`,
         text: `Please find attached the task report for ${formattedDate}.`,
         attachments: [
@@ -290,6 +293,7 @@ cron.schedule("* * * * *", async () => {
           }
         ]
       });
+      
 
       console.log("✅ EOD report emailed successfully.");
 
