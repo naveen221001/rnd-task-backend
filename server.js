@@ -245,43 +245,38 @@ cron.schedule("* * * * *", async () => {
     // Generate PDF
     const pdfPath = path.join(__dirname, `eod_report_${formattedDate}.pdf`);
     generatePDF(tasks, pdfPath, formattedDate);
- 
 
+// Wait a moment to ensure the PDF has been written
+setTimeout(async () => {
+  const transporter = nodemailer.createTransport({
+    host: "smtp.office365.com",
+    port: 587,
+    secure: false,
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
 
-    writeStream.on('finish', async () => {
-      // Send email
-      const transporter = nodemailer.createTransport({
-        host: "smtp.office365.com",
-        port: 587,
-        secure: false,
-        auth: {
-          user: process.env.EMAIL_USER, 
-          pass: process.env.EMAIL_PASS, 
-        },
-      });
+  await transporter.sendMail({
+    from: `"R&D Portal" <${process.env.EMAIL_USER}>`,
+    to: "naveenchamaria2001@gmail.com",
+    subject: `EOD Task Report - ${formattedDate}`,
+    text: `Please find attached the task report for ${formattedDate}.`,
+    attachments: [
+      {
+        filename: `EOD_Report_${formattedDate}.pdf`,
+        path: pdfPath,
+      },
+    ],
+  });
 
-      await transporter.sendMail({
-        from: `"R&D Portal" <${process.env.EMAIL_USER}>`, 
-        to: "naveenchamaria2001@gmail.com",  
-        subject: `EOD Task Report - ${formattedDate}`,
-        text: `Please find attached the task report for ${formattedDate}.`,
-        attachments: [
-          {
-            filename: `EOD_Report_${formattedDate}.pdf`,
-            path: pdfPath
-          }
-        ]
-      });
+  console.log("✅ EOD report emailed successfully.");
+  await Task.deleteMany({ timestamp: { $regex: formattedDate } });
+  console.log("🧹 Yesterday's tasks deleted.");
+  fs.unlinkSync(pdfPath);
+}, 1000); // wait 1 second
 
-      console.log("✅ EOD report emailed successfully.");
-
-      // Delete tasks for yesterday
-      await Task.deleteMany({ timestamp: { $regex: formattedDate } });
-      console.log("🧹 Yesterday's tasks deleted.");
-
-      // Cleanup: delete PDF file
-      fs.unlinkSync(pdfPath);
-    });
 
   } catch (error) {
     console.error("❌ EOD report job failed:", error);
