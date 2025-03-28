@@ -155,6 +155,72 @@ app.post('/api/tasks', authenticateMicrosoftToken, async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+function generatePDF(tasks, filePath, formattedDate) {
+  const doc = new PDFDocument({ margin: 40 });
+  const red = "#b30000";
+  const lightRow1 = "#fff5f5";
+  const lightRow2 = "#ffe6e6";
+
+  doc.pipe(fs.createWriteStream(filePath));
+
+  // Header Banner
+  doc
+    .rect(0, 0, doc.page.width, 60)
+    .fill(red)
+    .fillColor("white")
+    .font("Helvetica-Bold")
+    .fontSize(18)
+    .text(`R&D Tasks Achieved - ${formattedDate}`, 40, 20, {
+      align: "center",
+      baseline: "middle",
+    });
+
+  let y = 90;
+
+  // Table Header
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(12)
+    .fillColor("white")
+    .rect(40, y, 520, 30)
+    .fill(red)
+    .fillColor("white")
+    .text("Employee", 50, y + 8, { width: 140, align: "left" })
+    .text("Task Title", 200, y + 8, { width: 120, align: "left" })
+    .text("Task Description", 340, y + 8, { width: 200, align: "left" });
+
+  y += 30;
+
+  // Table Rows
+  tasks.forEach((task, index) => {
+    const bgColor = index % 2 === 0 ? lightRow1 : lightRow2;
+    doc
+      .fillColor(bgColor)
+      .rect(40, y, 520, 40)
+      .fill(bgColor)
+      .fillColor("black")
+      .font("Helvetica")
+      .fontSize(10)
+      .text(task.user, 50, y + 10, { width: 140 })
+      .text(task.title, 200, y + 10, { width: 120 })
+      .text(task.description, 340, y + 10, { width: 200 });
+
+    y += 40;
+  });
+
+  // Footer
+  doc
+    .fontSize(8)
+    .fillColor("gray")
+    .text(
+      `© R&D Portal | Auto-generated on: ${new Date().toLocaleString()}`,
+      40,
+      doc.page.height - 40,
+      { align: "center" }
+    );
+
+  doc.end();
+}
 
 // Cron job: Generate and send PDF report at 12:30 PM daily
 cron.schedule("* * * * *", async () => {
