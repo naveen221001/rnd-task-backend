@@ -177,34 +177,10 @@ cron.schedule("* * * * *", async () => {
     }
 
     // Generate PDF
-    const doc = new PDFDocument({ margin: 50 });
     const pdfPath = path.join(__dirname, `eod_report_${formattedDate}.pdf`);
-    const writeStream = fs.createWriteStream(pdfPath);
-    doc.pipe(writeStream);
+    generatePDF(tasks, pdfPath, formattedDate);
+ 
 
-    doc.fontSize(20).fillColor('#b30000').text(`📋 EOD Task Report - ${formattedDate}`, {
-      align: 'center',
-      underline: true
-    });
-
-    doc.moveDown();
-
-    tasks.forEach((task, index) => {
-      doc
-        .fontSize(14)
-        .fillColor('#333')
-        .text(`${index + 1}. ${task.title} (${task.priority})`, { continued: true })
-        .font('Helvetica-Oblique')
-        .text(` — by ${task.user}`);
-
-      doc
-        .font('Helvetica')
-        .text(`Description: ${task.description}`)
-        .text(`Timestamp: ${task.timestamp}`)
-        .moveDown(1);
-    });
-
-    doc.end();
 
     writeStream.on('finish', async () => {
       // Send email
