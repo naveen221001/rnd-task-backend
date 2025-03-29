@@ -57,6 +57,7 @@ const taskSchema = new mongoose.Schema({
   title: { type: String, required: true },
   description: { type: String },
   priority: { type: String, default: 'low' },
+  taskDate: { type: String, required: true },
   timestamp: { type: String, default: new Date().toLocaleString() },
 }, { timestamps: true });
 const Task = mongoose.model('Task', taskSchema);
@@ -146,9 +147,16 @@ app.post('/api/login', async (req, res) => {
 app.post('/api/tasks', authenticateMicrosoftToken, async (req, res) => {
   const { title, description, priority, timestamp } = req.body;
   const user = req.user.preferred_username || req.user.upn || req.user.email;
+   // Enforce taskDate as yesterday
+   const today = new Date();
+   const yesterday = new Date(today);
+   yesterday.setDate(today.getDate() - 1);
+   const taskDate = yesterday.toISOString().split('T')[0];
+  
+   const timeStampNow = new Date().toLocaleString();
 
   try {
-    const newTask = new Task({ title, description, priority, timestamp, user });
+    const newTask = new Task({ title, description, priority, timestamp:timeStampNow, user });
     await newTask.save();
     res.status(201).json({ message: 'Task added' });
   } catch (err) {
@@ -233,9 +241,7 @@ cron.schedule("* * * * *", async () => {
 
     const formattedDate = yesterday.toISOString().split('T')[0];
 
-    const tasks = await Task.find({
-      timestamp: { $regex: formattedDate }
-    });
+    const tasks = await Task.find({taskDate: formattedDate });
 
     if (!tasks.length) {
       console.log("ℹ️ No tasks found for yesterday.");
