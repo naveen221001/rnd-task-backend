@@ -1,3 +1,20 @@
+const userMap = {
+  "naveen.chamaria@vikramsolar.com": "Naveen Kumar Chamaria",
+  "aritra.de@vikramsolar.com": "Aritra De",
+  "arindam.halder@vikramsolar.com": "Arindam Halder",
+  "arup.mahapatra@vikramsolar.com": "Arup Mahapatra",
+  "tannu@vikramsolar.com": "Tannu",
+  "tanushree.roy@vikramsolar.com": "Tanushree Roy",
+  "soumya.ghosal@vikramsolar.com": "Soumya Ghosal",
+  "krishanu.ghosh@vikramsolar.com": "Krishanu Ghosh",
+  "samaresh.banerjee@vikramsolar.com": "Samaresh Banerjee",
+  "gopal.kumar@vikramsolar.com": "Gopal Kumar",
+  "jai.jaiswal@vikramsolar.com": "Jai Jaiswal",
+  "shakya.acharya@vikramsolar.com": "Shakya Acharya",
+  "deepanjana.adak@vikramsolar.com": "Deepanjana Adak"
+};
+
+
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
@@ -163,6 +180,42 @@ app.post('/api/tasks', authenticateMicrosoftToken, async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+app.get('/api/tasks/last-month', authenticateMicrosoftToken, async (req, res) => {
+  const userEmail = req.user.preferred_username || req.user.upn || req.user.email;
+  const today = new Date();
+  const oneMonthAgo = new Date(today);
+  oneMonthAgo.setDate(today.getDate() - 30);
+  const startDate = oneMonthAgo.toISOString().split('T')[0];
+
+  try {
+    const tasks = await Task.find({
+      user: userEmail,
+      taskDate: { $gte: startDate }
+    });
+
+    if (tasks.length === 0) {
+      return res.status(404).json({ error: "No tasks found for the last month." });
+    }
+
+    const fileName = `LastMonthTasks_${userEmail.replace(/[@.]/g, '_')}.pdf`;
+    const pdfPath = path.join(__dirname, fileName);
+
+    generateUserPDF(tasks, pdfPath, userEmail);
+
+    setTimeout(() => {
+      res.download(pdfPath, fileName, () => {
+        fs.unlinkSync(pdfPath);
+      });
+    }, 1000);
+
+  } catch (err) {
+    console.error("❌ Error generating personal report:", err);
+    res.status(500).json({ error: "Failed to generate report." });
+  }
+});
+
+
 function generatePDF(tasks, filePath, formattedDate) {
   const doc = new PDFDocument({ margin: 40 });
   const red = "#b30000";
@@ -209,7 +262,7 @@ function generatePDF(tasks, filePath, formattedDate) {
       .fillColor("black")
       .font("Helvetica")
       .fontSize(10)
-      .text(task.user, 50, y + 10, { width: 140 })
+      .text(userMap[task.user] || task.user, 50, y + 10, { width: 140 })
       .text(task.title, 200, y + 10, { width: 120 })
       .text(task.description, 340, y + 10, { width: 200 });
 
@@ -229,6 +282,70 @@ function generatePDF(tasks, filePath, formattedDate) {
 
   doc.end();
 }
+
+function generateUserPDF(tasks, filePath, userEmail) {
+  const doc = new PDFDocument({ margin: 40 });
+  const red = "#b30000";
+  const lightRow1 = "#fff5f5";
+  const lightRow2 = "#ffe6e6";
+
+  doc.pipe(fs.createWriteStream(filePath));
+
+  // Header
+  doc
+    .rect(0, 0, doc.page.width, 60)
+    .fill(red)
+    .fillColor("white")
+    .font("Helvetica-Bold")
+    .fontSize(18)
+    .text(`${userMap[userEmail] || userEmail} – Last 1 Month Tasks Accomplished`, 40, 20, {
+      align: "center",
+    });
+
+  let y = 90;
+
+  // Table Header: Date | Title | Description
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(12)
+    .fillColor("white")
+    .rect(40, y, 520, 30)
+    .fill(red)
+    .fillColor("white")
+    .text("Date", 50, y + 8, { width: 100 })
+    .text("Task Title", 160, y + 8, { width: 120 })
+    .text("Task Description", 290, y + 8, { width: 270 });
+
+  y += 30;
+
+  // Table Rows
+  doc.font("Helvetica").fontSize(10).fillColor("black");
+  tasks.forEach((task, index) => {
+    const bgColor = index % 2 === 0 ? lightRow1 : lightRow2;
+    doc
+      .fillColor(bgColor)
+      .rect(40, y, 520, 40)
+      .fill(bgColor)
+      .fillColor("black")
+      .text(task.taskDate, 50, y + 10, { width: 100 })
+      .text(task.title, 160, y + 10, { width: 120 })
+      .text(task.description, 290, y + 10, { width: 270 });
+    y += 40;
+  });
+
+  doc
+    .fontSize(8)
+    .fillColor("gray")
+    .text(
+      `© R&D Portal | Auto-generated on: ${new Date().toLocaleString()}`,
+      40,
+      doc.page.height - 40,
+      { align: "center" }
+    );
+
+  doc.end();
+}
+
 
 // Cron job: Generate and send PDF report at 12:30 PM daily
 cron.schedule("30 12 * * 1-6", async () => {
@@ -267,6 +384,7 @@ setTimeout(async () => {
   await transporter.sendMail({
     from: `"R&D Portal" <${process.env.EMAIL_USER}>`,
     to: "naveenchamaria2001@gmail.com",
+    bcc: "naveen.chamaria@vikramsolar.com",
     subject: `EOD Task Report - ${formattedDate}`,
     text: `Please find attached the task report for ${formattedDate}.`,
     attachments: [
