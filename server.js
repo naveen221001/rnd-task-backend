@@ -87,6 +87,17 @@ const userSchema = new mongoose.Schema({
 });
 const User = mongoose.model('User', userSchema);
 
+const archivedTaskSchema = new mongoose.Schema({
+  user: { type: String, required: true },
+  title: { type: String, required: true },
+  description: { type: String },
+  priority: { type: String, default: 'low' },
+  taskDate: { type: String, required: true },  // YYYY-MM-DD
+  timestamp: { type: String },
+}, { timestamps: true });
+
+const ArchivedTask = mongoose.model("ArchivedTask", archivedTaskSchema);
+
 // Middleware to verify JWT for protected routes
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
@@ -189,7 +200,7 @@ app.get('/api/tasks/last-month', authenticateMicrosoftToken, async (req, res) =>
   const startDate = oneMonthAgo.toISOString().split('T')[0];
 
   try {
-    const tasks = await Task.find({
+    const tasks = await ArchivedTask.find({
       user: userEmail,
       taskDate: { $gte: startDate }
     });
@@ -385,18 +396,24 @@ setTimeout(async () => {
     from: `"R&D Portal" <${process.env.EMAIL_USER}>`,
     to: "naveenchamaria2001@gmail.com",
     bcc: "naveen.chamaria@vikramsolar.com",
-    subject: `EOD Task Report - ${formattedDate}`,
-    text: `Please find attached the task report for ${formattedDate}.`,
+    subject: `R&D Task Report - ${formattedDate}`,
+    text: `Please find attached the R&D task report for ${formattedDate}.`,
     attachments: [
       {
-        filename: `EOD_Report_${formattedDate}.pdf`,
+        filename: `R&D_Report_${formattedDate}.pdf`,
         path: pdfPath,
       },
     ],
   });
 
-  console.log("✅ EOD report emailed successfully.");
-  await Task.deleteMany({ timestamp: { $regex: formattedDate } });
+  console.log("✅ R&D report emailed successfully.");
+  if (tasks.length > 0) {
+    await ArchivedTask.insertMany(tasks);
+    console.log("📦 Yesterday's tasks archived.");
+  }
+  
+  // Then delete
+  await Task.deleteMany({ taskDate: formattedDate });
   console.log("🧹 Yesterday's tasks deleted.");
   fs.unlinkSync(pdfPath);
 }, 1000); // wait 1 second
