@@ -348,7 +348,7 @@ function generateUserPDF(tasks, filePath, userEmail) {
 
 
 // Cron job: Generate and send PDF report at 12:30 PM daily
-cron.schedule("30 12 * * 1-6", async () => {
+cron.schedule("* * * * *", async () => {
   console.log("🕒 Running EOD task report job...");
 
   try {
