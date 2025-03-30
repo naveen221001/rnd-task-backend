@@ -173,7 +173,7 @@ app.post('/api/tasks', authenticateMicrosoftToken, async (req, res) => {
    const timeStampNow = new Date().toLocaleString();
 
   try {
-    const newTask = new Task({ title, description, priority, timestamp:timeStampNow, user });
+    const newTask = new Task({ title, description, priority, timestamp:timeStampNow, user, taskDate });
     await newTask.save();
     res.status(201).json({ message: 'Task added' });
   } catch (err) {
