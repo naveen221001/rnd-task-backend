@@ -394,8 +394,11 @@ setTimeout(async () => {
 
   await transporter.sendMail({
     from: `"R&D Portal" <${process.env.EMAIL_USER}>`,
-    to: "naveenchamaria2001@gmail.com",
-    bcc: "naveen.chamaria@vikramsolar.com",
+    to: "sumit.kumar@vikramsolar.com",
+    bcc: [
+    "naveen.chamaria@vikramsolar.com",
+    "gopal.kumar@vikramsolar.com"
+    ],
     subject: `R&D Task Report - ${formattedDate}`,
     text: `Please find attached the R&D task report for ${formattedDate}.`,
     attachments: [
